@@ -1,0 +1,144 @@
+import java.time.LocalDateTime
+
+plugins {
+    id 'java'
+    id 'fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+    id 'com.diffplug.spotless' version '6.12.1'
+    id 'org.scm-manager.license' version '0.7.1'
+}
+
+group = maven_group
+version = mod_version
+def targetJavaVersion = Integer.parseInt(java_version)
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraft_version}"
+    mappings "net.fabricmc:yarn:${minecraft_version}+build.${yarn_build}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = java_encoding
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        it.options.release = targetJavaVersion
+    }
+}
+
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+    archivesBaseName = archives_base_name + "_" + minecraft_version
+}
+
+subprojects {
+    buildDir = new File(rootProject.projectDir, "builds/" + project.name)
+}
+
+subprojects.each {p ->
+    rootProject.dependencies {
+        modImplementation(include p)
+    }
+}
+
+allprojects {
+    apply plugin: "maven-publish"
+    apply plugin: "java"
+    apply plugin: "fabric-loom"
+    apply plugin: "com.diffplug.spotless"
+    apply plugin: "org.scm-manager.license"
+
+    sourceCompatibility = JavaVersion.toVersion(targetJavaVersion)
+    targetCompatibility = JavaVersion.toVersion(targetJavaVersion)
+
+    dependencies {
+        minecraft "com.mojang:minecraft:${minecraft_version}"
+        mappings "net.fabricmc:yarn:${minecraft_version}+build.${yarn_build}:v2"
+        modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    }
+
+    tasks.withType(ProcessResources).configureEach {
+        inputs.properties (
+                "version": mod_version,
+                "minecraft": minecraft_version,
+                "loader": loader_version,
+                "minecraft_version_max": minecraft_version_max,
+                "mod_id": project.mod_id,
+                "mod_name": project.mod_name
+        )
+
+        filesMatching("fabric.mod.json") {
+            expand (
+                    "version": mod_version,
+                    "minecraft": minecraft_version,
+                    "loader": loader_version,
+                    "max_minecraft": minecraft_version_max,
+                    "mod_id": mod_id,
+                    "mod_name": mod_name
+            )
+        }
+    }
+
+    spotless {
+        java {
+            removeUnusedImports()
+            formatAnnotations()
+        }
+    }
+
+    license {
+        ignoreFailures = true
+        header = rootProject.file('HEADER')
+
+        charset = java_encoding
+
+        include '**/*.java'
+
+        properties {
+            author = rootProject.author
+            year = LocalDateTime.now().year
+            license = rootProject.license
+            license_url = rootProject.license_url
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        it.options.encoding = java_encoding
+        if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+            it.options.release = targetJavaVersion
+        }
+    }
+
+    java {
+        withSourcesJar()
+        withJavadocJar()
+    }
+
+    [jar, sourcesJar].each {
+        it.from(rootProject.file("LICENSE")) {
+            rename { "${it}_${project.mod_id}+${project.mod_version}" }
+        }
+    }
+
+    build.dependsOn licenseFormat, licenseCheck
+    sourcesJar.dependsOn licenseFormat, licenseCheck
+    javadocJar.dependsOn licenseFormat, licenseCheck
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+            }
+        }
+
+        repositories {
+            // Wanna publish your builds somewhere?
+        }
+    }
+}

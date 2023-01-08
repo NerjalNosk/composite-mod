@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${version}",
+  "name": "${mod_name}",
+  "icon": "assets/${mod_id}/icon.png",
+  "depends": {
+    "fabricloader": ">=${loader}",
+    "fabric": "*",
+    "minecraft": ">=${minecraft} <${max_minecraft}"
+  }
+}

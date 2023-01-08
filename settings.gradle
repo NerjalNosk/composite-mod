@@ -1,0 +1,24 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.Fabricmc.net'
+        }
+        maven {
+            name = 'Jitpack'
+            url = 'https://jitpack.io'
+        }
+        gradlePluginPortal()
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if(requested.id.id == 'org.scm-manager.license') {
+                useModule("com.github.scm-manager:gradle-license-plugin:${requested.version}")
+            }
+        }
+    }
+}
+
+rootProject.name = 'multi_mod_test'
+include 'multi_mod_base'
+
