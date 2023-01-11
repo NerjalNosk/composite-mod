@@ -25,6 +25,7 @@ dependencies {
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = java_encoding
     if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        //noinspection GroovyAssignabilityCheck, GroovyAccessibility
         it.options.release = targetJavaVersion
     }
 }
@@ -41,12 +42,6 @@ subprojects {
     buildDir = new File(rootProject.projectDir, "builds/" + project.name)
 }
 
-subprojects.each {p ->
-    rootProject.dependencies {
-        modImplementation(include p)
-    }
-}
-
 allprojects {
     apply plugin: "maven-publish"
     apply plugin: "java"
@@ -59,8 +54,13 @@ allprojects {
 
     dependencies {
         minecraft "com.mojang:minecraft:${minecraft_version}"
-        mappings "net.fabricmc:yarn:${minecraft_version}+build.${yarn_build}:v2"
         modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    }
+
+    if (it != rootProject) {
+        dependencies {
+            mappings "net.fabricmc:yarn:${minecraft_version}+build.${yarn_build}"
+        }
     }
 
     tasks.withType(ProcessResources).configureEach {
@@ -68,20 +68,15 @@ allprojects {
                 "version": mod_version,
                 "minecraft": minecraft_version,
                 "loader": loader_version,
-                "minecraft_version_max": minecraft_version_max,
+                "max_minecraft": minecraft_version_max,
                 "mod_id": project.mod_id,
-                "mod_name": project.mod_name
+                "mod_name": project.mod_name,
+                "license": rootProject.license,
+                "author": author
         )
 
         filesMatching("fabric.mod.json") {
-            expand (
-                    "version": mod_version,
-                    "minecraft": minecraft_version,
-                    "loader": loader_version,
-                    "max_minecraft": minecraft_version_max,
-                    "mod_id": mod_id,
-                    "mod_name": mod_name
-            )
+            expand inputs.properties
         }
     }
 
@@ -100,17 +95,26 @@ allprojects {
 
         include '**/*.java'
 
+        def l = rootProject.properties.hasProperty("license_name") ? rootProject.license_name : rootProject.license
+
         properties {
             author = rootProject.author
             year = LocalDateTime.now().year
-            license = rootProject.license
+            license = l
             license_url = rootProject.license_url
         }
+    }
+
+    //noinspection ConfigurationAvoidance
+    tasks.withType(AbstractArchiveTask) {
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
     }
 
     tasks.withType(JavaCompile).configureEach {
         it.options.encoding = java_encoding
         if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+            //noinspection GroovyAssignabilityCheck, GroovyAccessibility
             it.options.release = targetJavaVersion
         }
     }
@@ -120,9 +124,11 @@ allprojects {
         withJavadocJar()
     }
 
-    [jar, sourcesJar].each {
-        it.from(rootProject.file("LICENSE")) {
-            rename { "${it}_${project.mod_id}+${project.mod_version}" }
+    if (it != rootProject) {
+        [jar, sourcesJar].each {
+            it.from(rootProject.file("LICENSE")) {
+                rename { "${it}_${project.mod_id}+${project.mod_version}" }
+            }
         }
     }
 
@@ -132,6 +138,7 @@ allprojects {
 
     publishing {
         publications {
+            //noinspection GroovyAssignabilityCheck
             mavenJava(MavenPublication) {
                 from components.java
             }
@@ -140,5 +147,29 @@ allprojects {
         repositories {
             // Wanna publish your builds somewhere?
         }
+    }
+}
+
+subprojects.each {p ->
+    remapJar.dependsOn("${p.path}:remapJar")
+}
+
+remapJar {
+    afterEvaluate {
+        subprojects.each {
+            nestedJars.from project("${it.path}").tasks.named("remapJar")
+        }
+    }
+}
+
+jar {
+    from(rootProject.file("LICENSE")) {
+        rename { "${it}_${project.mod_id}+${project.mod_version}" }
+    }
+}
+
+sourcesJar {
+    from(rootProject.file("LICENSE")) {
+        rename { "${it}_${project.mod_id}+${project.mod_version}" }
     }
 }

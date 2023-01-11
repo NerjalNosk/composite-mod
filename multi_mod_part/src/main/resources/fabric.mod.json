@@ -11,7 +11,10 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.example.base.MultiModBase"
+      "com.example.part.MultiModPart"
+    ],
+    "client": [
+      "com.example.part.MultiModPartClient"
     ]
   },
   "depends": {

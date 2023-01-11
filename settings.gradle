@@ -19,6 +19,8 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'multi_mod_test'
+rootProject.name = 'multi_mod_template'
+
 include 'multi_mod_base'
+include 'multi_mod_part'
 
