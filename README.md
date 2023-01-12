@@ -15,10 +15,14 @@ sorted by name.
 
 ## How to build
 
+### Subproject requirements
+
 All subproject needs to be added in the `settings.gradle` file.
 
 All subproject only needs at least a `build.gradle` file, but may
 as well include a `gradle.properties` file.
+
+### How to set up
 
 All the subprojects' gradle need to contain are the following properties:
 * the mod version, by the name of `mod_version`
@@ -27,8 +31,9 @@ All the subprojects' gradle need to contain are the following properties:
 * the mod id, by the name of `mod_id`
 * the mod's name, by the name of `mod_name`
 
-The root project will take care of adding all needed dependencies
-for the main build.
+The root project will take care of adding all needed groovy
+dependencies for the whole build, including dependencies to
+Minecraft, Fabric, and such.
 
 You may add all needed dependency to one of all subproject
 respectively in the subproject's `build.gradle` or in the
@@ -38,6 +43,16 @@ closure.
 You may as well add all additional tasks or configuration in the
 root project's build script, such as for example any
 modrinth/curseforge/git automatic release.
+
+### Parallel dependencies
+
+If you want to set a parallel dependency between two subprojects
+of the whole mod, a script is already there to help you with that.
+Just give a look at the example subprojects' `build.gradle` files
+to copy-paste it to your needs. You then only need to edit the
+`parallelDependencies` map (A String-boolean map) variable in order
+to have all the dependencies set up, as well as the `fabric.mod.json`
+dynamically updated
 
 ---
 

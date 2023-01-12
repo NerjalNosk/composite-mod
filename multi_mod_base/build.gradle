@@ -1,2 +1,32 @@
 group project.maven_group
 version project.mod_version
+
+// List other subprojects of the multi mod to implement in this one
+def parallelDependencies = [
+]
+def extra = ''
+
+// For all listed parallel
+parallelDependencies.each {name,required ->
+    if (name == project.name) {
+        // We avoid self-dependency
+        return
+    }
+    // If there is a parallel subproject matching the given name
+    if (rootProject.subprojects.any {it.name == name}) {
+        def sub = (Project)rootProject.subprojects.stream().filter {it.name == name}.findFirst().get()
+        // Implement it to this project as well
+        dependencies {
+            modImplementation sub
+        }
+        if (required) {
+            extra += "\",\n    \"${name}\": \">=${sub.version}"
+        }
+    }
+}
+
+tasks.withType(ProcessResources).each {
+    it.inputs.properties (
+            "extra": extra
+    )
+}
