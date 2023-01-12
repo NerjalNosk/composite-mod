@@ -20,6 +20,7 @@
   "depends": {
     "fabricloader": ">=${loader}",
     "fabric": "*",
-    "minecraft": ">=${minecraft} <${max_minecraft}"
+    "minecraft": ">=${minecraft} <${max_minecraft}",
+    "multi_mod_base": ">=0.0.1"
   }
 }

@@ -10,6 +10,7 @@ pluginManagement {
         }
         gradlePluginPortal()
     }
+    // Resolve Scm-Manager's Gradle License Plugin port through Jitpack
     resolutionStrategy {
         eachPlugin {
             if(requested.id.id == 'org.scm-manager.license') {
@@ -21,6 +22,7 @@ pluginManagement {
 
 rootProject.name = 'multi_mod_template'
 
+// List subprojects for them to be included in the build
 include 'multi_mod_base'
 include 'multi_mod_part'
 

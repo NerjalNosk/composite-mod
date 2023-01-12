@@ -1,2 +1,18 @@
 group project.maven_group
 version project.mod_version
+
+// List other subprojects of the multi mod to implement in this one
+def parallelDependencies = [
+        "multi_mod_base"
+]
+
+dependencies {
+    // For all listed parallel dependency
+    parallelDependencies.each {dep ->
+        // If there is a parallel subproject matching the given name
+        if (rootProject.subprojects.any {it.name == dep}) {
+            // Implement it to this project as well
+            modImplementation rootProject.subprojects.stream().filter {it.name == dep}.findFirst().get()
+        }
+    }
+}
