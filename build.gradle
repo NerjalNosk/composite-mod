@@ -61,6 +61,22 @@ allprojects {
         dependencies {
             mappings "net.fabricmc:yarn:${minecraft_version}+build.${yarn_build}"
         }
+
+        if (project.properties.containsKey("parallel")) {
+            def parallelDependencies = Map.ofEntries("${project.parallel}".split(";").toList().stream().map {s->
+                if (s.empty) return null
+                def n = s.split(":")
+                return new MapEntry(n[0], Boolean.parseBoolean(n[1]))
+            }.toList().toArray( MapEntry[]::new ))
+            parallelDependencies.each {name,required ->
+                if (rootProject.subprojects.any {it.name == name}) {
+                    def sub = (Project)rootProject.subprojects.stream().filter {it.name == name}.findFirst().get()
+                    dependencies {
+                        api sub
+                    }
+                }
+            }
+        }
     }
 
     tasks.withType(ProcessResources).configureEach {
