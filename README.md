@@ -1,15 +1,15 @@
 # Multi Mod Template
 
-This is an example for a multi-mod builder.
+This is an example for a **Fabric** Minecraft multi-mod project.
 
 It allows for you to make a mod, with multiple nested mods,
-all built separately and nested in the main mod's file.
+all built separately and embedded in the main build file.
 
 ## builds locations
 
 The main mod's build directory is the default `build/` folder,
-while the submods will all be built in the `builds/` folder, then
-organized by subproject.
+while the subprojects will all have their build folder grouped in
+the `builds/` folder, then organized by subproject.
 
 ---
 
