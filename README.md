@@ -54,6 +54,25 @@ to copy-paste it to your needs. You then only need to edit the
 to have all the dependencies set up, as well as the `fabric.mod.json`
 dynamically updated
 
+### Test run dependencies
+
+If you want to make a mod with some specific other mod' dependency,
+you might wish to have those included in your test run folders. But
+at the same time, having those in your git repo quickly eats a lot
+of place, and becomes annoying to update.
+
+Instead, I propose you to only keep updated some download links to
+the desired mods' jar files, all in your properties' files.
+In the root project and all of its subprojects, Gradle will
+automatically look for an eventual `run_mods` property, and if it
+exists _(which is not required!)_, it will parse it as an array of
+semicolon-separated URLs, and download each of those (if absent)
+to the project's run mods folder before any test run task is
+executed.
+
+That way, you can keep all of those annoying `run` folders out of
+your git history.
+
 ---
 
 ## Licensing

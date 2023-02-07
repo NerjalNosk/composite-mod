@@ -6,6 +6,7 @@ plugins {
     id 'maven-publish'
     id 'com.diffplug.spotless' version '6.12.1'
     id 'org.scm-manager.license' version '0.7.1'
+    id 'de.undercouch.download' version '5.3.1'
 }
 
 group = maven_group
@@ -151,6 +152,27 @@ allprojects {
     build.dependsOn licenseFormat, licenseCheck
     sourcesJar.dependsOn licenseFormat, licenseCheck
     javadocJar.dependsOn licenseFormat, licenseCheck
+
+    tasks.register('dlRunMods') {
+        if (project.properties.containsKey("run_mods")) {
+            def mods = List.of("${project.run_mods}".split(";"))
+            mods.each { mod->
+                if (!mod.empty) {
+                    def _s = mod.split("/")
+                    def dl_modName = _s[_s.length - 1]
+                    download.run {
+                        src mod
+                        dest "${project.projectDir.name}/run/mods/${dl_modName}"
+                        overwrite false
+                        onlyIfModified true
+                    }
+                }
+            }
+        }
+    }
+
+    runClient.dependsOn dlRunMods
+    runServer.dependsOn dlRunMods
 
     publishing {
         publications {
