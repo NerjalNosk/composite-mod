@@ -1,14 +1,15 @@
 import java.time.LocalDateTime
 
 plugins {
-    id 'java'
-    id 'fabric-loom' version "${loom_version}"
-    id 'maven-publish'
-    id 'com.diffplug.spotless' version '6.12.1'
-    id 'org.scm-manager.license' version '0.7.1'
-    id 'de.undercouch.download' version '5.3.1'
+    id 'java' // basic java project
+    id 'fabric-loom' version "${loom_version}" // required for the build process
+    id 'maven-publish' // Wanna publish your build somewhere?
+    id 'com.diffplug.spotless' version '6.12.1' // Pre-build code analysis
+    id 'org.scm-manager.license' version '0.7.1' // Adds license header to all code file
+    id 'de.undercouch.download' version '5.3.1' // Allows to download files freely
 }
 
+// Sets build properties from the 'gradle.properties' file
 group = maven_group
 version = mod_version
 def targetJavaVersion = Integer.parseInt(java_version)
@@ -18,11 +19,13 @@ repositories {
 }
 
 dependencies {
+    // default dependencies, need to be implemented in the root project before any other one
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    mappings "net.fabricmc:yarn:${minecraft_version}+build.${yarn_build}:v2"
+    mappings "net.fabricmc:yarn:${minecraft_version}+build.${yarn_build}:v2" // v2 for better subproject handling
     modImplementation "net.fabricmc:fabric-loader:${loader_version}"
 }
 
+// Java version & encoding compilation configuration
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = java_encoding
     if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
@@ -36,14 +39,18 @@ java {
     if (JavaVersion.current() < javaVersion) {
         toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
     }
+    // build archive name definition
     archivesBaseName = archives_base_name + "_" + minecraft_version
 }
 
 subprojects {
+    // Sets the subproject's build dirs to be located in the root 'builds' folder
     buildDir = new File(rootProject.projectDir, "builds/" + project.name)
 }
 
+// Global configuration for all project
 allprojects {
+    // Apply plugins, to avoid having to set them in all build scripts
     apply plugin: "maven-publish"
     apply plugin: "java"
     apply plugin: "fabric-loom"
@@ -53,26 +60,34 @@ allprojects {
     sourceCompatibility = JavaVersion.toVersion(targetJavaVersion)
     targetCompatibility = JavaVersion.toVersion(targetJavaVersion)
 
+    // Sets minecraft and fabric dependencies. Will not have any impact on the root project
     dependencies {
         minecraft "com.mojang:minecraft:${minecraft_version}"
         modImplementation "net.fabricmc:fabric-loader:${loader_version}"
     }
 
     if (it != rootProject) {
+        // Avoid duplicate mappings on the root project, which isn't supported by loom
         dependencies {
             mappings "net.fabricmc:yarn:${minecraft_version}+build.${yarn_build}"
         }
 
+        // Sets parallel subproject dependencies, if needed
         if (project.properties.containsKey("parallel")) {
+            // Creates a String -> boolean map out of the project's "parallel" property
             def parallelDependencies = Map.ofEntries("${project.parallel}".split(";").toList().stream().map {s->
-                if (s.empty) return null
+                if (s.empty) return null // Avoid trying to parse an empty element of the property array
                 def n = s.split(":")
                 return new MapEntry(n[0], Boolean.parseBoolean(n[1]))
             }.toList().toArray( MapEntry[]::new ))
+            // Then iterate the created map for dependency implementation
             parallelDependencies.each {name,required ->
-                if (rootProject.subprojects.any {it.name == name}) {
+                // Only apply dependency if there is a matching other subproject
+                if (rootProject.subprojects.any {it.name == name} && name != project.name) {
+                    // Get the project from the given name
                     def sub = (Project)rootProject.subprojects.stream().filter {it.name == name}.findFirst().get()
                     dependencies {
+                        // Using 'api' implementation to avoid missing build or task loop conflicts
                         api sub
                     }
                 }
@@ -81,6 +96,7 @@ allprojects {
     }
 
     tasks.withType(ProcessResources).configureEach {
+        // get template expansion data from the project's properties
         inputs.properties (
                 "version": mod_version,
                 "minecraft": minecraft_version,
@@ -92,11 +108,13 @@ allprojects {
                 "author": author
         )
 
+        // Apply the template expansion data to the project's "fabric.mod.json" file
         filesMatching("fabric.mod.json") {
             expand inputs.properties
         }
     }
 
+    // Java syntax check configuration. Disable at will.
     spotless {
         java {
             removeUnusedImports()
@@ -104,16 +122,24 @@ allprojects {
         }
     }
 
+    // Source licensing configuration
     license {
+        // Sets to ignore when it cannot apply license
         ignoreFailures = true
+        // Sets the base file for the header to the specified file.
+        // From the root project since licensing is to be common the the whole project.
         header = rootProject.file('HEADER')
 
+        // Sets the header to the same charset as the project
         charset = java_encoding
 
+        // Specifies the file to be included
         include '**/*.java'
 
+        // Gets license from the root project, since the license is to be the same from the whole project.
         def l = rootProject.properties.hasProperty("license_name") ? rootProject.license_name : rootProject.license
 
+        // Sets the properties to be replaced in the header, from the root project's properties
         properties {
             author = rootProject.author
             year = LocalDateTime.now().year
@@ -128,6 +154,7 @@ allprojects {
         reproducibleFileOrder = true
     }
 
+    // Then again, compilation configuration
     tasks.withType(JavaCompile).configureEach {
         it.options.encoding = java_encoding
         if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
@@ -136,12 +163,15 @@ allprojects {
         }
     }
 
+    // Sets build to also generate the sources and doc jar files. Disable at will.
     java {
         withSourcesJar()
         withJavadocJar()
     }
 
+    // Avoid duplicate configuration of the jar and sourcesJar tasks
     if (it != rootProject) {
+        // Sets to include the root LICENSE file in the built jar
         [jar, sourcesJar].each {
             it.from(rootProject.file("LICENSE")) {
                 rename { "${it}_${project.mod_id}+${project.mod_version}" }
@@ -149,36 +179,77 @@ allprojects {
         }
     }
 
+    // Sets the build tasks to depend on code licensing
     build.dependsOn licenseFormat, licenseCheck
     sourcesJar.dependsOn licenseFormat, licenseCheck
     javadocJar.dependsOn licenseFormat, licenseCheck
 
+    // Defines task to download test run mods
     tasks.register('dlRunMods') {
+        // Only attempt further operation if there are mod requirements
         if (project.properties.containsKey("run_mods")) {
+            // Gets the list of download URLs
             def mods = List.of("${project.run_mods}".split(";"))
+            // For all element in the list:
             mods.each { mod->
+                // Avoid processing empty elements
                 if (!mod.empty) {
+                    // Gets the file name from the URL
                     def _s = mod.split("/")
                     def dl_modName = _s[_s.length - 1]
+                    // Download the file from the URL to the mods dir
                     download.run {
                         src mod
                         dest "${project.projectDir.name}/run/mods/${dl_modName}"
-                        overwrite false
-                        onlyIfModified true
+                        overwrite false // Avoid downloading already present mods
+                        onlyIfModified true // Avoid downloading mods that haven't changed on the server
                     }
                 }
             }
         }
     }
 
+    // Set test run tasks to depend on required mods download
     runClient.dependsOn dlRunMods
     runServer.dependsOn dlRunMods
 
+    // Publish to your maven servers or local maven at will.
     publishing {
         publications {
             //noinspection GroovyAssignabilityCheck
             mavenJava(MavenPublication) {
-                from components.java
+                if (project != rootProject) {
+                    //noinspection GroovyAssignabilityCheck
+                    from components.java
+                } else {
+                    //noinspection GroovyAssignabilityCheck
+                    artifact(remapJar) {
+                        //noinspection GroovyAssignabilityCheck
+                        builtBy(remapJar)
+                    }
+
+                    //noinspection GroovyAssignabilityCheck
+                    artifact(sourcesJar) {
+                        //noinspection GroovyAssignabilityCheck
+                        builtBy remapSourcesJar
+                    }
+
+                    //noinspection GroovyAssignabilityCheck
+                    artifact javadocJar
+
+                    // Manually adds dependency to the publication maven POM for the subprojects
+                    pom.withXml {
+                        //noinspection GroovyImplicitNullArgumentCall
+                        def depsNode = asNode().appendNode("dependencies")
+                        subprojects.each {
+                            def depNode = depsNode.appendNode("dependency")
+                            depNode.appendNode("groupId", it.group)
+                            depNode.appendNode("artifactId", it.name)
+                            depNode.appendNode("version", it.version)
+                            depNode.appendNode("scope", "compile")
+                        }
+                    }
+                }
             }
         }
 
@@ -188,10 +259,12 @@ allprojects {
     }
 }
 
+// Sets main jar to depend on the subprojects to be finished
 subprojects.each {p ->
     remapJar.dependsOn("${p.path}:remapJar")
 }
 
+// Include the subprojects' builds in the main jar
 remapJar {
     afterEvaluate {
         subprojects.each {
@@ -200,14 +273,17 @@ remapJar {
     }
 }
 
+// Include the license file in the build jar
 jar {
     from(rootProject.file("LICENSE")) {
         rename { "${it}_${project.mod_id}+${project.mod_version}" }
     }
 }
 
+// Include the license file in the sources jar
 sourcesJar {
     from(rootProject.file("LICENSE")) {
         rename { "${it}_${project.mod_id}+${project.mod_version}" }
     }
 }
+
