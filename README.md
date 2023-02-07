@@ -9,7 +9,7 @@ all built separately and nested in the main mod's file.
 
 The main mod's build directory is the default `build/` folder,
 while the submods will all be built in the `builds/` folder, then
-sorted by name.
+organized by subproject.
 
 ---
 
@@ -20,11 +20,14 @@ sorted by name.
 All subproject needs to be added in the `settings.gradle` file.
 
 All subproject only needs at least a `build.gradle` file, but may
-as well include a `gradle.properties` file.
+as well include a `gradle.properties` file (easier to set the
+project's properties).
 
 ### How to set up
 
-All the subprojects' gradle need to contain are the following properties:
+All the subprojects' gradle **need** to contain are the following
+properties:
+
 * the mod version, by the name of `mod_version`
 * the mod's maven group, by the name of `maven_group`
 * the build's archive base name, by the name of `archive_base_name`
@@ -37,8 +40,8 @@ Minecraft, Fabric, and such.
 
 You may add all needed dependency to one of all subproject
 respectively in the subproject's `build.gradle` or in the
-root project's build script, within the `allprojects { dependencies }`
-closure.
+root project's build script, within the 
+`allprojects { dependencies }`closure.
 
 You may as well add all additional tasks or configuration in the
 root project's build script, such as for example any
@@ -48,11 +51,19 @@ modrinth/curseforge/git automatic release.
 
 If you want to set a parallel dependency between two subprojects
 of the whole mod, a script is already there to help you with that.
-Just give a look at the example subprojects' `build.gradle` files
-to copy-paste it to your needs. You then only need to edit the
-`parallelDependencies` map (A String-boolean map) variable in order
-to have all the dependencies set up, as well as the `fabric.mod.json`
-dynamically updated
+The subproject depending on any other subproject only needs to
+contain the fitting `parallel` property. This property has to be a
+map associating to each needed subproject to a boolean, the boolean
+indicating whether the dependency is to be required for the sub-mod
+to be initialized (and thus will be dynamically added to the
+sub-mod's `fabric.mod.json` requirements file).
+
+Example:
+```properties
+...
+# List parallel dependencies
+parallel=some_submod:true;other_submod:false
+```
 
 ### Test run dependencies
 
@@ -73,6 +84,13 @@ executed.
 That way, you can keep all of those annoying `run` folders out of
 your git history.
 
+Example: _(Download Fabric API 0.58 for Mc 1.19 from Modrinth)_
+```properties
+...
+# Run configuration required mods
+run_mods=https://cdn.modrinth.com/data/P7dR8mSH/versions/0.58.0+1.19/fabric-api-0.58.0+1.19.jar
+```
+
 ---
 
 ## Licensing
@@ -92,8 +110,12 @@ Thank you for using my template, while it is registered as
 licensed under the Unlicense, I will only ask of you to add
 some reference to the original Git repository within your own
 project (making it a fork would be enough). You may then change
-at will all of the licensing within your own projects.
+at will all the licensing within your own projects.
 
 Thanks to the [Fabric API](https://github.com/FabricMC/fabric)'s
 build scripts for the idea and helping me figure out how to make
 it all work right.
+
+Thanks to [Michel Krämer](https://github.com/michel-kraemer) for
+his Gradle download plugin, which allowed me to set the dynamic
+test run mods download.
