@@ -213,37 +213,39 @@ allprojects {
     runClient.dependsOn dlRunMods
     runServer.dependsOn dlRunMods
 
-    // Publish to your maven servers or local maven at will.
-    publications {
-        //noinspection GroovyAssignabilityCheck
-        mavenJava(MavenPublication) {
-            artifact(remapJar) {
-                builtBy(remapJar)
-            }
-
-            artifact(sourcesJar) {
-                builtBy(remapSourcesJar)
-            }
-
-            artifact javadocJar
-
-            pom.withXml {
-                def depsNode = asNode().getAt("dependencies")?: asNode().appendNode("dependencies")
-                dependencies.iterator().each {e->
-                    if (!e.properties.containsKey("group")) return
-                    def depNode = depsNode.appendNode("dependency")
-                    depNode.appendNode("groupId", e.group)
-                    depNode.appendNode("artifactId", e.name)
-                    depNode.appendNode("version", e.version)
-                    depNode.appendNode("scope", "compile")
+    publishing {
+        // Publish to your maven servers or local maven at will.
+        publications {
+            //noinspection GroovyAssignabilityCheck
+            mavenJava(MavenPublication) {
+                artifact(remapJar) {
+                    builtBy(remapJar)
                 }
-                if (project == rootProject) {
-                    subprojects.each {
+
+                artifact(sourcesJar) {
+                    builtBy(remapSourcesJar)
+                }
+
+                artifact javadocJar
+
+                pom.withXml {
+                    def depsNode = asNode().getAt("dependencies") ?: asNode().appendNode("dependencies")
+                    dependencies.iterator().each { e ->
+                        if (!e.properties.containsKey("group")) return
                         def depNode = depsNode.appendNode("dependency")
-                        depNode.appendNode("groupId", it.group)
-                        depNode.appendNode("artifactId", it.name)
-                        depNode.appendNode("version", it.version)
+                        depNode.appendNode("groupId", e.group)
+                        depNode.appendNode("artifactId", e.name)
+                        depNode.appendNode("version", e.version)
                         depNode.appendNode("scope", "compile")
+                    }
+                    if (project == rootProject) {
+                        subprojects.each {
+                            def depNode = depsNode.appendNode("dependency")
+                            depNode.appendNode("groupId", it.group)
+                            depNode.appendNode("artifactId", it.name)
+                            depNode.appendNode("version", it.version)
+                            depNode.appendNode("scope", "compile")
+                        }
                     }
                 }
             }
