@@ -214,40 +214,36 @@ allprojects {
     runServer.dependsOn dlRunMods
 
     // Publish to your maven servers or local maven at will.
-    publishing {
-        publications {
-            //noinspection GroovyAssignabilityCheck
-            mavenJava(MavenPublication) {
-                if (project != rootProject) {
-                    //noinspection GroovyAssignabilityCheck
-                    from components.java
-                } else {
-                    //noinspection GroovyAssignabilityCheck
-                    artifact(remapJar) {
-                        //noinspection GroovyAssignabilityCheck
-                        builtBy(remapJar)
-                    }
+    publications {
+        //noinspection GroovyAssignabilityCheck
+        mavenJava(MavenPublication) {
+            artifact(remapJar) {
+                builtBy(remapJar)
+            }
 
-                    //noinspection GroovyAssignabilityCheck
-                    artifact(sourcesJar) {
-                        //noinspection GroovyAssignabilityCheck
-                        builtBy remapSourcesJar
-                    }
+            artifact(sourcesJar) {
+                builtBy(remapSourcesJar)
+            }
 
-                    //noinspection GroovyAssignabilityCheck
-                    artifact javadocJar
+            artifact javadocJar
 
-                    // Manually adds dependency to the publication maven POM for the subprojects
-                    pom.withXml {
-                        //noinspection GroovyImplicitNullArgumentCall
-                        def depsNode = asNode().appendNode("dependencies")
-                        subprojects.each {
-                            def depNode = depsNode.appendNode("dependency")
-                            depNode.appendNode("groupId", it.group)
-                            depNode.appendNode("artifactId", it.name)
-                            depNode.appendNode("version", it.version)
-                            depNode.appendNode("scope", "compile")
-                        }
+            pom.withXml {
+                def depsNode = asNode().getAt("dependencies")?: asNode().appendNode("dependencies")
+                dependencies.iterator().each {e->
+                    if (!e.properties.containsKey("group")) return
+                    def depNode = depsNode.appendNode("dependency")
+                    depNode.appendNode("groupId", e.group)
+                    depNode.appendNode("artifactId", e.name)
+                    depNode.appendNode("version", e.version)
+                    depNode.appendNode("scope", "compile")
+                }
+                if (project == rootProject) {
+                    subprojects.each {
+                        def depNode = depsNode.appendNode("dependency")
+                        depNode.appendNode("groupId", it.group)
+                        depNode.appendNode("artifactId", it.name)
+                        depNode.appendNode("version", it.version)
+                        depNode.appendNode("scope", "compile")
                     }
                 }
             }
