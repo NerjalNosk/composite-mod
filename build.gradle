@@ -7,12 +7,17 @@ plugins {
     id 'com.diffplug.spotless' version '6.12.1' // Pre-build code analysis
     id 'org.scm-manager.license' version '0.7.1' // Adds license header to all code file
     id 'de.undercouch.download' version '5.3.1' // Allows to download files freely
+    id 'org.kordamp.gradle.markdown' version '2.2.0' // Provides Markdown javadoc generation
 }
 
 // Sets build properties from the 'gradle.properties' file
 group = maven_group
 version = mod_version
 def targetJavaVersion = Integer.parseInt(java_version)
+
+// define license name var
+def licenseName =
+        (project.hasProperty("license_name") ? "${project.license_name}" : "${project.license}").toString()
 
 repositories {
     mavenCentral()
@@ -44,8 +49,20 @@ java {
 }
 
 subprojects {
+    apply plugin: "org.kordamp.gradle.markdown"
+
     // Sets the subproject's build dirs to be located in the root 'builds' folder
     buildDir = new File(rootProject.projectDir, "builds/" + project.name)
+
+    javadoc {
+        doLast {htmlToMarkdown}
+    }
+
+    htmlToMarkdown {
+        mustRunAfter javadoc
+        sourceDir = new File(buildDir, "docs/javadoc")
+        outputDir = new File(buildDir, "docs/mdDoc")
+    }
 }
 
 // Global configuration for all project
@@ -104,8 +121,10 @@ allprojects {
                 "max_minecraft": minecraft_version_max,
                 "mod_id": project.mod_id,
                 "mod_name": project.mod_name,
+                "description": project.description,
                 "license": rootProject.license,
-                "author": author
+                "author": author,
+                "project_url": rootProject.project_url
         )
 
         // Apply the template expansion data to the project's "fabric.mod.json" file
@@ -136,14 +155,11 @@ allprojects {
         // Specifies the file to be included
         include '**/*.java'
 
-        // Gets license from the root project, since the license is to be the same from the whole project.
-        def l = rootProject.properties.hasProperty("license_name") ? rootProject.license_name : rootProject.license
-
         // Sets the properties to be replaced in the header, from the root project's properties
         properties {
             author = rootProject.author
             year = LocalDateTime.now().year
-            license = l
+            license = licenseName
             license_url = rootProject.license_url
         }
     }
@@ -229,6 +245,20 @@ allprojects {
                 artifact javadocJar
 
                 pom.withXml {
+                    asNode().appendNode("packaging", "jar")
+                    asNode().appendNode("name",project.mod_name)
+                    asNode().appendNode("description",project.description)
+                    asNode().appendNode("url",rootProject.project_url)
+                    // publish licenses
+                    def licensesSet = new HashSet()
+                    def licensesNode = asNode().getAt("licenses") ?: asNode().appendNode("licenses")
+                    def projectLicense = licensesNode.appendNode("license")
+                    licensesSet.add(rootProject.license_name)
+                    projectLicense.appendNode("name", rootProject.license_name)
+                    projectLicense.appendNode("url", rootProject.license_url)
+                    projectLicense.appendNode("distribution", "repo")
+                    // POM SCM
+                    (asNode().getAt("scm") ?: asNode().appendNode("scm")).appendNode("url", rootProject.project_source_url)
                     def depsNode = asNode().getAt("dependencies") ?: asNode().appendNode("dependencies")
                     dependencies.iterator().each { e ->
                         if (!e.properties.containsKey("group")) return
@@ -237,11 +267,26 @@ allprojects {
                         depNode.appendNode("artifactId", e.name)
                         depNode.appendNode("version", e.version)
                         depNode.appendNode("scope", "compile")
+
+                        if (!licensesSet.contains(e.name)) {
+                            try {
+                                def lName = e.license.name
+                                def lUrl = e.license.url
+                                def lDist = e.license.distribution
+                                def depLicense = licensesNode.appendNode("license")
+                                depLicense.appendNode("name", lName)
+                                depLicense.appendNode("url", lUrl)
+                                depLicense.appendNode("distribution", lDist)
+                                licensesSet.add(e.name)
+                            } catch (t) {
+                                t.printStackTrace()
+                            }
+                        }
                     }
                     if (project == rootProject) {
                         subprojects.each {
                             def depNode = depsNode.appendNode("dependency")
-                            depNode.appendNode("groupId", it.group)
+                            depNode.appendNode("groupId", it.maven_group)
                             depNode.appendNode("artifactId", it.name)
                             depNode.appendNode("version", it.version)
                             depNode.appendNode("scope", "compile")
@@ -253,6 +298,13 @@ allprojects {
 
         repositories {
             // Wanna publish your builds somewhere?
+        }
+    }
+
+    jar {
+        into("META-INF/maven/${project.maven_group}/${project.name}") {
+            from generatePomFileForMavenJavaPublication
+            rename { it.replace('pom-default.xml', 'pom.xml') }
         }
     }
 }

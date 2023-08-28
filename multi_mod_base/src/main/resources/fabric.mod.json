@@ -3,9 +3,13 @@
   "id": "${mod_id}",
   "version": "${version}",
   "name": "${mod_name}",
+  "description": "${description}",
   "authors": [
     "${author}"
   ],
+  "contact": {
+    "homepage": "${project_url}"
+  },
   "license": "${license}",
   "icon": "assets/${mod_id}/icon.png",
   "environment": "*",
